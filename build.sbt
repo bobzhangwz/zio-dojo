@@ -5,6 +5,8 @@ ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.zhpooer"
 ThisBuild / organizationName := "zhpooer"
 
+bloopExportJarClassifiers in Global := Some(Set("sources"))
+
 val http4sVersion = "1.0.0-M5"
 lazy val root = (project in file("."))
   .settings(
@@ -27,7 +29,7 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
       "dev.zio" %% "zio" % "1.0.3",
       "dev.zio" %% "zio-interop-cats" % "2.2.0.1",
-      "com.github.pureconfig" %% "pureconfig" % "0.14.0",
+      "is.cir" %% "ciris" % "1.2.1",
       "org.specs2" %% "specs2-core" % "4.10.0" % Test
     )
   )
