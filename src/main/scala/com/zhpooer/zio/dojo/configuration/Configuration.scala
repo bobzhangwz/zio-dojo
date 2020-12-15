@@ -9,21 +9,25 @@ object Configuration {
   trait Service {
     val load: Task[AppConfig]
   }
-  val live: ZLayer[Any, Nothing, Configuration] = {
-    ZLayer.succeed(new Live {})
-  }
+
+  val live: ZLayer[Any, Nothing, Configuration] =
+    ZLayer.succeed(new Live(sys.env))
 }
 
-trait Live extends Configuration.Service {
-
+class Live(envMap: Map[String, String]) extends Configuration.Service {
 
   val apiConfig: ConfigValue[ApiConfig] =
     for {
-      port <- env("API_PORT").as[Int].default(8081)
-      endpoint <- env("API_ENDPOINT")
+      port <- fromEnv("API_PORT").as[Int].default(8081)
+      endpoint <- fromEnv("API_ENDPOINT")
     } yield ApiConfig(endpoint, port)
 
   val appConfig: ConfigValue[AppConfig] = apiConfig.map(AppConfig)
 
   override val load: Task[AppConfig] = appConfig.load[Task]
+
+  def fromEnv(name: String): ConfigValue[String] = {
+    val key = ConfigKey.env(name)
+    envMap.get(name).fold(ConfigValue.missing[String](key))(ConfigValue.loaded[String](key, _))
+  }
 }
