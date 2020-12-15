@@ -27,18 +27,17 @@ object Application extends zio.App {
 object Main extends App {
   val runtime = zio.Runtime.default
 
-  ZIO.runtime[Clock].flatMap { implicit rte: zio.Runtime[Clock] =>
-     BlazeServerBuilder.apply[Task](rte.platform.executor.asEC)
-       .bindHttp(8080, "localhost")
-       .withHttpApp(HelloService.service)
-       .serve
-       .compile
-       .drain
-  }
-
-  val program: RIO[Console with Configuration, Unit] = for {
+  val program: RIO[Clock with Console with Configuration, Unit] = for {
     appConfig <- ZIO.accessM[Configuration](_.get.load)
     _ <- putStrLn(appConfig.toString())
+    _ <- ZIO.runtime[Clock].flatMap { implicit rte =>
+       BlazeServerBuilder.apply[Task](rte.platform.executor.asEC)
+         .bindHttp(appConfig.api.port, appConfig.api.endpoint)
+         .withHttpApp(HelloService.service)
+         .serve
+         .compile
+         .drain
+    }
   } yield ()
 
   runtime.unsafeRun(
