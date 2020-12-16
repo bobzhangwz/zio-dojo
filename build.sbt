@@ -8,6 +8,7 @@ ThisBuild / organizationName := "zhpooer"
 bloopExportJarClassifiers in Global := Some(Set("sources"))
 
 val http4sVersion = "0.21.7"
+val tapirVersion = "0.16.16"
 lazy val root = (project in file("."))
   .settings(
     name := "zio-dojo",
@@ -30,11 +31,14 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio" % "1.0.3",
       "dev.zio" %% "zio-interop-cats" % "2.2.0.1",
       "is.cir" %% "ciris" % "1.2.1",
-//      "com.softwaremill.sttp.tapir" %% "tapir-zio" % "0.17.0-M10",
-      "com.softwaremill.sttp.tapir" %% "tapir-core" % "0.16.16",
-      "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % "0.16.16",
-      "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % "0.16.16",
-      //      "com.softwaremill.sttp.tapir" %% "tapir-zio-http4s-server" % "0.17.0-M10",
+      "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-http4s" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-openapi-circe-yaml" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-zio" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-core" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % tapirVersion,
+      "com.softwaremill.sttp.tapir" %% "tapir-zio-http4s-server" % tapirVersion,
       "org.specs2" %% "specs2-core" % "4.10.0" % Test
     )
   )

@@ -10,10 +10,12 @@ import zio.interop.catz._
 import zio.Task
 import zio.clock.Clock
 import zio.interop.catz.implicits._
-import com.zhpooer.zio.dojo.service.HelloService
+import com.zhpooer.zio.dojo.service.{HelloService, HelloTapirService}
+import org.http4s.implicits._
+import cats.implicits._
+import sttp.tapir.swagger.http4s.SwaggerHttp4s
 
 object Application extends zio.App {
-
   override def run(args: List[String]): zio.URIO[zio.ZEnv,ExitCode] = sayHello.exitCode
 
   val sayHello =
@@ -25,6 +27,7 @@ object Application extends zio.App {
 }
 
 object Main extends App {
+  // API_ENDPOINT=localhost bloop run root --main com.zhpooer.zio.dojo.Main
   val runtime = zio.Runtime.default
 
   val program: RIO[Clock with Console with Configuration, Unit] = for {
@@ -33,7 +36,14 @@ object Main extends App {
     _ <- ZIO.runtime[Clock].flatMap { implicit rte =>
        BlazeServerBuilder.apply[Task](rte.platform.executor.asEC)
          .bindHttp(appConfig.api.port, appConfig.api.endpoint)
-         .withHttpApp(HelloService.service)
+         .withHttpApp(
+           (
+             HelloService.service <+>
+               HelloTapirService.service <+>
+
+               new SwaggerHttp4s(HelloTapirService.yaml, "swagger").routes
+             ).orNotFound
+         )
          .serve
          .compile
          .drain
