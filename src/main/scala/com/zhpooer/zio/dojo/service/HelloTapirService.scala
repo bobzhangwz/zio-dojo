@@ -1,23 +1,26 @@
 package com.zhpooer.zio.dojo.service
 
-import org.http4s.HttpRoutes
 import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.ztapir._
 import sttp.tapir.server.http4s.ztapir._
-import zio.{IO, Task, UIO}
-import zio.interop.catz._
 import cats.implicits._
+import zio._
+import zio.interop.catz._
+import sttp.tapir.generic.auto._
 import io.circe.generic.auto._
 import sttp.model.StatusCode
+import zio.clock.Clock
+import zio.logging.Logging
 
-object HelloTapirService {
+class HelloTapirService[R <: Logging with Clock] {
+  type HelloTask[A] = RIO[R, A]
 
   val helloZioEndpoint: ZEndpoint[String, String, String] =
     endpoint.get.in("hello_zio").in(query[String]("name")).description("please enter your name")
       .errorOut(stringBody)
       .out(stringBody)
 
-  val helloService: HttpRoutes[Task] = helloZioEndpoint.toRoutes {
+  val helloService = helloZioEndpoint.toRoutes[R] {
     case "error" =>
       IO.fail("some thing wrong")
     case name =>
@@ -35,13 +38,13 @@ object HelloTapirService {
       .in(query[String]("name")).description("item name")
       .errorOut(
         oneOf[AppError](
-          statusMapping(StatusCode.BadRequest, jsonBody[InvalidValue].description("invalide value")),
-          statusMapping(StatusCode.NotFound, jsonBody[SystemError])
+          statusMappingFromMatchType(StatusCode.BadRequest, jsonBody[InvalidValue].description("invalide value")),
+          statusMappingFromMatchType(StatusCode.NotFound, jsonBody[SystemError])
         )
       )
       .out(jsonBody[Item])
 
-  def getItem(id: Int, name: String): IO[AppError, Item] = {
+  def getItem(id: Int, name: String): ZIO[R, AppError, Item] = {
     id match {
       case -1 => IO.fail(InvalidValue("id is -1"))
       case 0 => IO.fail(SystemError("id is 0"))
@@ -49,11 +52,11 @@ object HelloTapirService {
     }
   }
 
-  val itemService: HttpRoutes[Task] = getItemEndpoint.toRoutes {
+  val itemService = getItemEndpoint.toRoutes {
     (getItem _).tupled
   }
 
-  val service: HttpRoutes[Task] = helloService <+> itemService
+  val service = itemService <+> helloService
 
   import sttp.tapir.docs.openapi._
   import sttp.tapir.openapi.circe.yaml._
