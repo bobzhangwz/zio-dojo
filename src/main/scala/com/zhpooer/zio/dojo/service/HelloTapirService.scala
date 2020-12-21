@@ -10,7 +10,7 @@ import sttp.tapir.generic.auto._
 import io.circe.generic.auto._
 import sttp.model.StatusCode
 import zio.clock.Clock
-import zio.logging.Logging
+import zio.logging.{Logging, log}
 
 class HelloTapirService[R <: Logging with Clock] {
   type HelloTask[A] = RIO[R, A]
@@ -22,9 +22,9 @@ class HelloTapirService[R <: Logging with Clock] {
 
   val helloService = helloZioEndpoint.toRoutes[R] {
     case "error" =>
-      IO.fail("some thing wrong")
+      log.info("say error") *> IO.fail("some thing wrong")
     case name =>
-      UIO(s"hello $name")
+      log.info("say hello") *> UIO(s"hello $name")
   }
 
   case class Item(id: Int, name: String)
@@ -46,7 +46,9 @@ class HelloTapirService[R <: Logging with Clock] {
 
   def getItem(id: Int, name: String): ZIO[R, AppError, Item] = {
     id match {
-      case -1 => IO.fail(InvalidValue("id is -1"))
+      case -1 =>
+
+        IO.fail(InvalidValue("id is -1"))
       case 0 => IO.fail(SystemError("id is 0"))
       case _ => UIO(Item(id, name))
     }
