@@ -2,19 +2,19 @@ package com.zhpooer.zio.dojo.domain
 
 import com.zhpooer.zio.dojo.repository
 import com.zhpooer.zio.dojo.repository.{Hello, HelloRepository}
-import doobie.Transactor
-import zio.{Has, RIO, Task}
+import com.zhpooer.zio.dojo.utils.TransactionManager
+import zio.{RIO, ZLayer}
 
 object HelloDomainService {
   trait Service {
-    def getHello(id: Int): RIO[HelloRepository , Option[Hello]]
+    def getHello(id: Int): RIO[HelloRepository with TransactionManager, Option[Hello]]
   }
+
+  val live: ZLayer[Any, Nothing, HelloDomainService] = ZLayer.succeed(new HelloDomainServiceLive)
 }
 
-class HelloDomainService(tx: Transactor[Task]) extends HelloDomainService.Service {
-  override def getHello(id: Int): RIO[HelloRepository, Option[Hello]] = {
-    RIO.accessM[HelloRepository](a =>
-      repository.getHello(id).provide( a ++ Has(tx))
-    )
+class HelloDomainServiceLive extends HelloDomainService.Service {
+  override def getHello(id: Int): RIO[HelloRepository with TransactionManager, Option[Hello]] = {
+    TransactionManager.runTransaction[HelloRepository with TransactionManager, Option[Hello]](repository.getHello(id))
   }
 }

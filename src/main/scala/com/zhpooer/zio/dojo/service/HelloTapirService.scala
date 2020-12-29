@@ -4,6 +4,7 @@ import sttp.tapir.json.circe.jsonBody
 import sttp.tapir.ztapir._
 import sttp.tapir.server.http4s.ztapir._
 import cats.implicits._
+import com.zhpooer.zio.dojo.domain.HelloDomainService
 import zio._
 import zio.interop.catz._
 import sttp.tapir.generic.auto._
@@ -12,7 +13,7 @@ import sttp.model.StatusCode
 import zio.clock.Clock
 import zio.logging.{Logging, log}
 
-class HelloTapirService[R <: Logging with Clock] {
+class HelloTapirService[R <: Logging with Clock with HelloDomainService] {
   type HelloTask[A] = RIO[R, A]
 
   val helloZioEndpoint: ZEndpoint[String, String, String] =
@@ -24,7 +25,8 @@ class HelloTapirService[R <: Logging with Clock] {
     case "error" =>
       log.info("say error") *> IO.fail("some thing wrong")
     case name =>
-      log.info("say hello") *> UIO(s"hello $name")
+      log.info("say hello")*>
+        UIO(s"hello $name")
   }
 
   case class Item(id: Int, name: String)

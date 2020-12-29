@@ -26,6 +26,12 @@ object TransactionManager {
     def runTransaction[R <: Has[_], A](zio: ZIO[R with HasConnection, Throwable, A]): ZIO[R, Throwable, A]
   }
 
+  def runTransaction[R <: Has[_], A](zio: ZIO[R with HasConnection, Throwable, A]): ZIO[R with TransactionManager, Throwable, A] = {
+    ZIO.accessM[R with TransactionManager] { mrg: TransactionManager =>
+      mrg.get.runTransaction[R, A](zio)
+    }
+  }
+
   val live: ZLayer[Configuration with Blocking, Throwable, TransactionManager] =
     ZLayer.fromManaged(
       for {
@@ -67,8 +73,10 @@ class TransactionManagerLive(transactor: Transactor[Task]) extends TransactionMa
     ZIO.accessM[R] { r =>
       val trans: ZIO[R with HasConnection, Throwable, A] = for {
         _ <- connection.setAutoCommit(false).transact(tx)
-        result <- zio
-        _ <- connection.commit.transact(tx)
+        result <- zio.onExit {
+          case Exit.Failure(_) => connection.rollback.transact(tx).either
+          case Exit.Success(_) => connection.commit.transact(tx).eventually
+        }
       } yield result
 
       trans.provide(r.add(tx))
