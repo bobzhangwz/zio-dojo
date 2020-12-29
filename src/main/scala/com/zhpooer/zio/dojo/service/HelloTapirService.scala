@@ -47,7 +47,6 @@ class HelloTapirService[R <: Logging with Clock] {
   def getItem(id: Int, name: String): ZIO[R, AppError, Item] = {
     id match {
       case -1 =>
-
         IO.fail(InvalidValue("id is -1"))
       case 0 => IO.fail(SystemError("id is 0"))
       case _ => UIO(Item(id, name))

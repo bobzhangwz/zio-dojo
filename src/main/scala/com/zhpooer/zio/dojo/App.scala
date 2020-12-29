@@ -10,6 +10,7 @@ import fs2.Stream.Compiler._
 import com.zhpooer.zio.dojo.service.{HelloService, HelloTapirService}
 import org.http4s.implicits._
 import cats.implicits._
+import com.zhpooer.zio.dojo.repository.HelloRepository
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.CORS
 import org.http4s.{HttpApp, HttpRoutes, Request}
@@ -34,7 +35,7 @@ object Main extends App {
   // API_ENDPOINT=localhost bloop run root --main com.zhpooer.zio.dojo.Main
   val runtime = zio.Runtime.default
 
-  type Dependency = Clock with Console with Configuration with Logging
+  type Dependency = Clock with Console with Configuration with Logging with HelloRepository
 
   def correlationIdMidware[R <: Logging](service: HttpApp[RIO[R, *]]): HttpApp[RIO[R, *]] =
     Kleisli { req: Request[RIO[R, *]] =>
@@ -48,7 +49,7 @@ object Main extends App {
 
   val tapirService = new HelloTapirService[Dependency]()
   val program: RIO[Dependency, Unit] = for {
-    appConfig <- ZIO.accessM[Configuration](_.get.load)
+    appConfig <- ZIO.access[Configuration](_.get)
     _ <- putStrLn(appConfig.toString())
 //    tapirService <- HelloTapirService.service
     routes: HttpRoutes[RIO[Dependency, *]] = new HelloService[Dependency].service <+>
@@ -58,7 +59,9 @@ object Main extends App {
   } yield ()
 
   runtime.unsafeRun(
-    program.provideCustomLayer(Configuration.live ++ Slf4jLogger.makeWithAllAnnotationsAsMdc())
+    program.provideCustomLayer(
+      Configuration.live ++ Slf4jLogger.makeWithAllAnnotationsAsMdc() ++ HelloRepository.live
+    )
   )
 
   def runHttp[R <: Clock with Logging](
