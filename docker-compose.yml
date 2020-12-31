@@ -1,1 +1,33 @@
+services:
+  app:
+    image: hseeberger/scala-sbt:8u265_1.4.5_2.13.4
+    environment:
+      - API_PORT=8081
+      - "API_ENDPOINT=0.0.0.0"
+      - DB_DRIVER=org.postgresql.Driver
+      - DB_URL=jdbc:postgresql://db:5432/hellodb
+      - DB_PASSWORD=1234
+      - DB_USER=postgres
+    ports:
+    - 8081:8081
+    depends_on:
+      - db
+    working_dir: /app
+    volumes:
+    - ./:/app
+    - ~/.ivy2:/root/.ivy2
+    - coursier-catch:/root/.cache/coursier
+  db:
+    image: library/postgres:12-alpine
+    environment:
+      - POSTGRES_DB=hellodb
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_USER=postgres
+    ports:
+    - 5432:5432
+    volumes:
+    - pgdata:/var/lib/postgresql/data
 
+volumes:
+  pgdata: {}
+  coursier-catch: {}

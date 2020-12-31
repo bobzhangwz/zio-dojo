@@ -17,6 +17,7 @@ lazy val root = (project in file("."))
     name := "zio-dojo",
     libraryDependencies += scalaTest % Test,
     libraryDependencies ++= Seq(
+      "org.postgresql" % "postgresql" % "42.2.16",
       "org.typelevel" %% "cats-core" % "2.2.0",
       "org.typelevel" %% "cats-effect" % "2.2.0",
       "is.cir" %% "ciris" % "1.2.1",
@@ -34,6 +35,7 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
       "dev.zio" %% "zio" % "1.0.3",
+      "dev.zio" %% "zio-macros" % "1.0.3",
       "dev.zio" %% "zio-interop-cats" % "2.2.0.1",
       "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-http4s" % tapirVersion,
       "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs" % tapirVersion,
@@ -53,6 +55,5 @@ lazy val root = (project in file("."))
 addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.1" cross CrossVersion.full)
 
 scalacOptions in Test ++= Seq("-Yrangepos")
-//scalacOptions ++= Seq("-Ylog-classpath")
-
+scalacOptions += "-Ymacro-annotations"
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.

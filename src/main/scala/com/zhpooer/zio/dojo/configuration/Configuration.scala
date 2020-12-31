@@ -22,10 +22,10 @@ class ConfigLoader(envMap: Map[String, String]) {
 
   val dbConfig: ConfigValue[DBConfig] = {
     for {
-      url <- fromEnv("DB_URL").default("")
-      driver <- fromEnv("DB_URL").default("")
-      user <- fromEnv("DB_URL").default("")
-      password <- fromEnv("DB_URL").default("")
+      url <- fromEnv("DB_URL")
+      driver <- fromEnv("DB_DRIVER")
+      user <- fromEnv("DB_USER")
+      password <- fromEnv("DB_PASSWORD")
     } yield DBConfig(url, driver, user, password)
   }
   val appConfig: ConfigValue[AppConfig] =

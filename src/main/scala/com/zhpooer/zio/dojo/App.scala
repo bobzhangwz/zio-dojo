@@ -35,11 +35,11 @@ object Application extends zio.App {
 }
 
 object Main extends App {
+  type BasicEnv = Blocking with Clock with Console with Configuration with Logging
   // API_ENDPOINT=localhost bloop run root --main com.zhpooer.zio.dojo.Main
   val runtime = zio.Runtime.default
 
-  type Dependency = Blocking with Clock with Console with
-    Configuration with Logging with HelloRepository with TransactionManager with HelloDomainService
+  type Dependency = BasicEnv with HelloRepository with TransactionManager with HelloDomainService
 
   def correlationIdMidware[R <: Logging](service: HttpApp[RIO[R, *]]): HttpApp[RIO[R, *]] =
     Kleisli { req: Request[RIO[R, *]] =>

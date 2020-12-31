@@ -25,8 +25,10 @@ class HelloTapirService[R <: Logging with Clock with HelloDomainService] {
     case "error" =>
       log.info("say error") *> IO.fail("some thing wrong")
     case name =>
-      log.info("say hello")*>
-        UIO(s"hello $name")
+      for {
+        _ <- log.info("say hello")
+        _ <- HelloDomainService.getHello(1).mapError(_.toString)
+      } yield s"hello $name"
   }
 
   case class Item(id: Int, name: String)
