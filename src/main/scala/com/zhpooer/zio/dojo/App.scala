@@ -1,25 +1,25 @@
 package com.zhpooer.zio.dojo
 
 import cats.data.Kleisli
-import zio.{ExitCode, RIO, UIO, ZIO}
-import zio.console._
-import com.zhpooer.zio.dojo.configuration.Configuration
-import zio.interop.catz._
-import zio.clock.Clock
-import fs2.Stream.Compiler._
-import com.zhpooer.zio.dojo.service.{HelloService, HelloTapirService}
-import org.http4s.implicits._
 import cats.implicits._
+import com.zhpooer.zio.dojo.configuration.Configuration
 import com.zhpooer.zio.dojo.domain.HelloDomainService
 import com.zhpooer.zio.dojo.repository.HelloRepository
+import com.zhpooer.zio.dojo.service.{HelloService, HelloTapirService}
 import com.zhpooer.zio.dojo.utils.TransactionManager
+import fs2.Stream.Compiler._
+import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.CORS
 import org.http4s.{HttpApp, HttpRoutes, Request}
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
 import zio.blocking.Blocking
+import zio.clock.Clock
+import zio.console._
+import zio.interop.catz._
 import zio.logging.slf4j.Slf4jLogger
 import zio.logging.{LogAnnotation, Logging, log}
+import zio._
 
 import java.util.UUID
 
@@ -34,12 +34,15 @@ object Application extends zio.App {
     } yield ()
 }
 
-object Main extends App {
-  type BasicEnv = Blocking with Clock with Console with Configuration with Logging
+object Main extends zio.App {
+  type BasicEnv = Blocking with Clock with Configuration with Logging
   // API_ENDPOINT=localhost bloop run root --main com.zhpooer.zio.dojo.Main
-  val runtime = zio.Runtime.default
-
   type Dependency = BasicEnv with HelloRepository with TransactionManager with HelloDomainService
+
+  val basicLayer = Blocking.live ++ Clock.live ++ Configuration.live ++ Slf4jLogger.makeWithAllAnnotationsAsMdc()
+
+  val programLayer =
+    basicLayer ++ HelloRepository.live >+> TransactionManager.live >+> HelloDomainService.live
 
   def correlationIdMidware[R <: Logging](service: HttpApp[RIO[R, *]]): HttpApp[RIO[R, *]] =
     Kleisli { req: Request[RIO[R, *]] =>
@@ -50,24 +53,6 @@ object Main extends App {
         }
       } yield resp
     }
-
-  val tapirService = new HelloTapirService[Dependency]()
-  val program: RIO[Dependency, Unit] = for {
-    appConfig <- ZIO.access[Configuration](_.get)
-    _ <- putStrLn(appConfig.toString())
-//    tapirService <- HelloTapirService.service
-    routes: HttpRoutes[RIO[Dependency, *]] = new HelloService[Dependency].service <+>
-      new SwaggerHttp4s(tapirService.yaml, "swagger").routes[RIO[Dependency, *]] <+>
-        tapirService.service
-    _ <- runHttp(routes.orNotFound, appConfig.api.port)
-  } yield ()
-
-  runtime.unsafeRun(
-    program.provideCustomLayer(
-      Blocking.live >+> Configuration.live >+> Slf4jLogger.makeWithAllAnnotationsAsMdc() >+>
-        HelloRepository.live >+> TransactionManager.live >+> HelloDomainService.live
-    )
-  )
 
   def runHttp[R <: Clock with Logging](
     httpApp: HttpApp[RIO[R, *]],
@@ -83,6 +68,22 @@ object Main extends App {
         .compile
         .drain
     }
+  }
+
+  override def run(args: List[String]): zio.URIO[zio.ZEnv, ExitCode] = {
+
+    val tapirService = new HelloTapirService[Dependency]()
+    val program: RIO[Dependency, Unit] = for {
+      appConfig <- ZIO.access[Configuration](_.get)
+      _ <- log.info(appConfig.toString())
+      //    tapirService <- HelloTapirService.service
+      routes: HttpRoutes[RIO[Dependency, *]] = new HelloService[Dependency].service <+>
+        new SwaggerHttp4s(tapirService.yaml, "swagger").routes[RIO[Dependency, *]] <+>
+        tapirService.service
+      _ <- runHttp(routes.orNotFound, appConfig.api.port)
+    } yield ()
+
+    program.provideSomeLayer[ZEnv](programLayer).exitCode
   }
 
 }

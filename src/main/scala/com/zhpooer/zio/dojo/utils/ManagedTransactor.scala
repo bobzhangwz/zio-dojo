@@ -1,8 +1,8 @@
 package com.zhpooer.zio.dojo.utils
 
 import cats.effect.Blocker
-import com.zhpooer.zio.dojo.configuration
-import com.zhpooer.zio.dojo.configuration.{Configuration, DBConfig}
+import com.zhpooer.zio.dojo.configuration.DBConfig
+import com.zhpooer.zio.dojo.{BasicDependency, configuration}
 import doobie.free.connection
 import doobie.hikari.HikariTransactor
 import doobie.implicits._
@@ -11,6 +11,7 @@ import doobie.{ConnectionIO, Transactor}
 import zio._
 import zio.blocking.Blocking
 import zio.interop.catz._
+import zio.logging.Logger
 
 object DBConnection {
   def exec[A](connIO: => ConnectionIO[A]): RIO[HasConnection, A] = {
@@ -33,12 +34,13 @@ object TransactionManager {
     }
   }
 
-  val live: ZLayer[Configuration with Blocking, Throwable, TransactionManager] = {
+  val live: ZLayer[BasicDependency, Throwable, TransactionManager] = {
     ZLayer.fromManaged(
       for {
         dbConfig <- configuration.getDBConfig.toManaged_
         managedTx <- mkTransactor(dbConfig)
-      } yield new TransactionManagerLive(managedTx)
+        baseDependency <- ZIO.environment[BasicDependency].toManaged_
+      } yield new TransactionManagerLive(baseDependency, managedTx)
     )
   }
 
@@ -68,13 +70,14 @@ object TransactionManager {
     }
 }
 
-class TransactionManagerLive(transactor: Transactor[Task]) extends TransactionManager.Service {
+class TransactionManagerLive(baseEnv: BasicDependency, transactor: Transactor[Task]) extends TransactionManager.Service {
   val tx: Transactor[Task] = transactor.copy(strategy0 = Strategy.void)
   def runTransaction[A](zio: ZIO[HasConnection, Throwable, A]): Task[A] = {
     val trans = for {
       _ <- connection.setAutoCommit(false).transact(tx)
       result <- zio.onExit {
-        case Exit.Failure(_) => connection.rollback.transact(tx).either
+        case Exit.Failure(_) =>
+          connection.rollback.transact(tx).either
         case Exit.Success(_) => connection.commit.transact(tx).eventually
       }
     } yield result
@@ -87,8 +90,9 @@ class TransactionManagerLive(transactor: Transactor[Task]) extends TransactionMa
       val trans: ZIO[R with HasConnection, Throwable, A] = for {
         _ <- connection.setAutoCommit(false).transact(tx)
         result <- zio.onExit {
-          case Exit.Failure(_) =>
-            connection.rollback.transact(tx).orDie
+          case Exit.Failure(e) =>
+            baseEnv.get[Logger[String]].error(e.toString) *>
+              connection.rollback.transact(tx).orDie
           case Exit.Success(_) =>
             connection.commit.transact(tx).orDie
         }
