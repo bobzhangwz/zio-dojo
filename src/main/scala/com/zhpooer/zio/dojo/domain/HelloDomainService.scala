@@ -17,7 +17,7 @@ object HelloDomainService {
     ZLayer.fromServices[HelloRepository.Service, TransactionManager.Service, Service]((repository, txMrg) => {
       new Service {
         override def getHello(id: Int): Task[Option[Hello]] =
-          txMrg.runTransaction(repository.getHello(id))
+          txMrg.inTransaction(repository.getHello(id))
       }
     })
   }
