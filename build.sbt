@@ -1,4 +1,5 @@
 import Dependencies._
+import scala.util.Properties._
 
 ThisBuild / scalaVersion     := "2.13.4"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
@@ -57,3 +58,10 @@ addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.1" cross CrossVers
 scalacOptions in Test ++= Seq("-Yrangepos")
 scalacOptions += "-Ymacro-annotations"
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.
+
+enablePlugins(FlywayPlugin)
+
+flywayUrl := envOrElse("DB_URL", "jdbc:postgresql://db:5432/hellodb")
+flywayUser := envOrElse("DB_USER", "postgres")
+flywayPassword := envOrElse("DB_PASSWORD", "postgres")
+flywayLocations += "filesystem:db/migration"

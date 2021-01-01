@@ -72,33 +72,25 @@ object TransactionManager {
 
 class TransactionManagerLive(baseEnv: BasicDependency, transactor: Transactor[Task]) extends TransactionManager.Service {
   val tx: Transactor[Task] = transactor.copy(strategy0 = Strategy.void)
-  def runTransaction[A](zio: ZIO[HasConnection, Throwable, A]): Task[A] = {
-    val trans = for {
+
+  def exec[R <: HasConnection, A](block: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
+    for {
       _ <- connection.setAutoCommit(false).transact(tx)
-      result <- zio.onExit {
-        case Exit.Failure(_) =>
-          connection.rollback.transact(tx).either
-        case Exit.Success(_) => connection.commit.transact(tx).eventually
+      result <- block.onExit {
+        case Exit.Failure(e) =>
+          baseEnv.get[Logger[String]].error(e.toString) *>
+            connection.rollback.transact(tx).orDie
+        case Exit.Success(_) => connection.commit.transact(tx).orDie
       }
     } yield result
-    trans.provide(Has(tx))
+  }
+  def runTransaction[A](zio: ZIO[HasConnection, Throwable, A]): Task[A] = {
+    exec(zio).provide(Has(tx))
   }
 
   def runTransactionR[R <: Has[_], A](zio: ZIO[R with HasConnection, Throwable, A]): ZIO[R, Throwable, A] = {
-
     ZIO.accessM[R] { r =>
-      val trans: ZIO[R with HasConnection, Throwable, A] = for {
-        _ <- connection.setAutoCommit(false).transact(tx)
-        result <- zio.onExit {
-          case Exit.Failure(e) =>
-            baseEnv.get[Logger[String]].error(e.toString) *>
-              connection.rollback.transact(tx).orDie
-          case Exit.Success(_) =>
-            connection.commit.transact(tx).orDie
-        }
-      } yield result
-
-      trans.provide(r.add(tx))
+      exec(zio).provide(r.add(tx))
     }
   }
 }

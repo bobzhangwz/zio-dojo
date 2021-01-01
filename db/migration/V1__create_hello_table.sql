@@ -1,0 +1,5 @@
+
+CREATE TABLE hello (
+  id INT PRIMARY KEY NOT NULL,
+  name VARCHAR(25) NOT NULL
+);
