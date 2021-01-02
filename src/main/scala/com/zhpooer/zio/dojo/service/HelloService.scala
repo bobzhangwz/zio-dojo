@@ -1,8 +1,8 @@
 package com.zhpooer.zio.dojo.service
 
 import com.zhpooer.zio.dojo.repository.HelloRepository
-import org.http4s.dsl.Http4sDsl
 import org.http4s.HttpRoutes
+import org.http4s.dsl.Http4sDsl
 import zio._
 import zio.interop.catz._
 import zio.logging.Logging
@@ -12,8 +12,7 @@ class HelloService[R <: Logging with HelloRepository] {
   private val dsl = Http4sDsl[HelloTask]
   import dsl._
 
-  val service = HttpRoutes.of[HelloTask] {
-    case GET -> Root =>
-      Ok("hello world")
+  val service = HttpRoutes.of[HelloTask] { case GET -> Root =>
+    Ok("hello world")
   }
 }

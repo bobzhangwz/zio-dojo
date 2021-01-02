@@ -1,41 +1,41 @@
 package com.zhpooer.zio.dojo
 
+import java.util.UUID
+
 import cats.data.Kleisli
 import cats.implicits._
 import com.zhpooer.zio.dojo.configuration.Configuration
 import com.zhpooer.zio.dojo.domain.HelloDomainService
 import com.zhpooer.zio.dojo.repository.HelloRepository
-import com.zhpooer.zio.dojo.service.{HelloService, HelloTapirService}
+import com.zhpooer.zio.dojo.service.{ HelloService, HelloTapirService }
 import com.zhpooer.zio.dojo.utils.TransactionManager
 import fs2.Stream.Compiler._
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.CORS
-import org.http4s.{HttpApp, HttpRoutes, Request}
+import org.http4s.{ HttpApp, HttpRoutes, Request }
 import sttp.tapir.swagger.http4s.SwaggerHttp4s
+import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.console._
 import zio.interop.catz._
 import zio.logging.slf4j.Slf4jLogger
-import zio.logging.{LogAnnotation, Logging, log}
-import zio._
-
-import java.util.UUID
+import zio.logging.{ log, LogAnnotation, Logging }
 
 object Application extends zio.App {
   override def run(args: List[String]): zio.URIO[zio.ZEnv, ExitCode] = sayHello.exitCode
 
   val sayHello =
     for {
-      _ <- putStrLn("What's your name: ")
+      _   <- putStrLn("What's your name: ")
       name = "zhang bo"
-      _ <- putStrLn(s"Hello ${name}, welcome to zio!")
+      _   <- putStrLn(s"Hello $name, welcome to zio!")
     } yield ()
 }
 
 object Main extends zio.App {
-  type BasicEnv = Blocking with Clock with Configuration with Logging
+  type BasicEnv   = Blocking with Clock with Configuration with Logging
   // API_ENDPOINT=localhost bloop run root --main com.zhpooer.zio.dojo.Main
   type Dependency = BasicEnv with HelloRepository with TransactionManager with HelloDomainService
 
@@ -48,9 +48,9 @@ object Main extends zio.App {
     Kleisli { req: Request[RIO[R, *]] =>
       for {
         correlationId <- UIO.some(UUID.randomUUID())
-        resp <- log.locally(_.annotate(LogAnnotation.CorrelationId, correlationId)) {
-          log.info("starting request") *> service(req)
-        }
+        resp          <- log.locally(_.annotate(LogAnnotation.CorrelationId, correlationId)) {
+                           log.info("starting request") *> service(req)
+                         }
       } yield resp
     }
 
@@ -72,15 +72,16 @@ object Main extends zio.App {
 
   override def run(args: List[String]): zio.URIO[zio.ZEnv, ExitCode] = {
 
-    val tapirService = new HelloTapirService[Dependency]()
+    val tapirService                   = new HelloTapirService[Dependency]()
     val program: RIO[Dependency, Unit] = for {
-      appConfig <- ZIO.access[Configuration](_.get)
-      _ <- log.info(appConfig.toString())
+      appConfig                             <- ZIO.access[Configuration](_.get)
+      _                                     <- log.info(appConfig.toString())
       //    tapirService <- HelloTapirService.service
-      routes: HttpRoutes[RIO[Dependency, *]] = new HelloService[Dependency].service <+>
-        new SwaggerHttp4s(tapirService.yaml, "swagger").routes[RIO[Dependency, *]] <+>
-        tapirService.service
-      _ <- runHttp(routes.orNotFound, appConfig.api.port)
+      routes: HttpRoutes[RIO[Dependency, *]] =
+        new HelloService[Dependency].service <+>
+          new SwaggerHttp4s(tapirService.yaml, "swagger").routes[RIO[Dependency, *]] <+>
+          tapirService.service
+      _                                     <- runHttp(routes.orNotFound, appConfig.api.port)
     } yield ()
 
     program.provideSomeLayer[ZEnv](programLayer).exitCode

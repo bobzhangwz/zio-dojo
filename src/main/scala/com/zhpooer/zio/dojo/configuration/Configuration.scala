@@ -1,10 +1,10 @@
 package com.zhpooer.zio.dojo.configuration
 
+import cats.implicits._
+import ciris._
 import zio.Task
 import zio.ZLayer
-import ciris._
 import zio.interop.catz._
-import cats.implicits._
 
 object Configuration {
 
@@ -16,18 +16,19 @@ class ConfigLoader(envMap: Map[String, String]) {
 
   val apiConfig: ConfigValue[ApiConfig] =
     for {
-      port <- fromEnv("API_PORT").as[Int].default(8081)
+      port     <- fromEnv("API_PORT").as[Int].default(8081)
       endpoint <- fromEnv("API_ENDPOINT")
     } yield ApiConfig(endpoint, port)
 
   val dbConfig: ConfigValue[DBConfig] = {
     for {
-      url <- fromEnv("DB_URL")
-      driver <- fromEnv("DB_DRIVER")
-      user <- fromEnv("DB_USER")
+      url      <- fromEnv("DB_URL")
+      driver   <- fromEnv("DB_DRIVER")
+      user     <- fromEnv("DB_USER")
       password <- fromEnv("DB_PASSWORD")
     } yield DBConfig(url, driver, user, password)
   }
+
   val appConfig: ConfigValue[AppConfig] =
     (apiConfig, dbConfig).mapN(AppConfig.apply)
 
