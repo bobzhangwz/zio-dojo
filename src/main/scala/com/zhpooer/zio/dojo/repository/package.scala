@@ -1,7 +1,7 @@
 package com.zhpooer.zio.dojo
 
-import com.zhpooer.zio.dojo.utils.HasConnection
-import zio.{ Has, RIO, ZIO }
+import com.zhpooer.zio.dojo.shared.db.HasConnection
+import zio.{Has, RIO, ZIO}
 
 package object repository {
   type HelloRepository = Has[HelloRepository.Service]

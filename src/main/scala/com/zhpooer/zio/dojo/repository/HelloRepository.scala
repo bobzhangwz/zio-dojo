@@ -1,9 +1,10 @@
 package com.zhpooer.zio.dojo.repository
 
-import com.zhpooer.zio.dojo.utils.{ DBConnection, HasConnection }
+import com.zhpooer.zio.dojo.shared.db
+import com.zhpooer.zio.dojo.shared.db.HasConnection
 import doobie.quill.DoobieContext
 import io.getquill.SnakeCase
-import zio.{ RIO, ZLayer }
+import zio.{RIO, ZLayer}
 
 case class Hello(id: Int, name: String)
 
@@ -23,7 +24,7 @@ class HelloRepositoryLive extends HelloRepository.Service {
   implicit val helloSchemaMeta = schemaMeta[Hello]("hello")
 
   override def getHello(id: Int): RIO[HasConnection, Option[Hello]] =
-    DBConnection.exec {
+    db.exec {
       ctx
         .run(
           query[Hello].filter(_.id == lift(id))
