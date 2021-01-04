@@ -1,7 +1,7 @@
 package com.zhpooer.zio.dojo
 
 import cats.implicits._
-import com.zhpooer.zio.dojo.configuration.Configuration
+import com.zhpooer.zio.dojo.configuration.ApiConfig
 import com.zhpooer.zio.dojo.live.allLayer
 import com.zhpooer.zio.dojo.service.{HelloService, HelloTapirService}
 import com.zhpooer.zio.dojo.shared.middleware.TracingMiddleware
@@ -14,7 +14,7 @@ import sttp.tapir.swagger.http4s.SwaggerHttp4s
 import zio._
 import zio.clock.Clock
 import zio.interop.catz._
-import zio.logging.{Logging, log}
+import zio.logging.Logging
 
 object Main extends zio.App {
   // API_ENDPOINT=localhost bloop run root --main com.zhpooer.zio.dojo.Main
@@ -22,14 +22,12 @@ object Main extends zio.App {
 
     val tapirService                   = new HelloTapirService[AppEnv]()
     val program: RIO[AppEnv, Unit] = for {
-      appConfig                             <- ZIO.access[Configuration](_.get)
-      _                                     <- log.info(appConfig.toString())
-      //    tapirService <- HelloTapirService.service
+      apiConfig                             <- ZIO.service[ApiConfig]
       routes: HttpRoutes[RIO[AppEnv, *]] =
         new HelloService[AppEnv].service <+>
           new SwaggerHttp4s(tapirService.yaml, "swagger").routes[RIO[AppEnv, *]] <+>
           tapirService.service
-      _                                     <- runHttp(routes.orNotFound, appConfig.api.port)
+      _                                     <- runHttp(routes.orNotFound, apiConfig.port)
     } yield ()
 
     program.provideSomeLayer[ZEnv](allLayer).exitCode

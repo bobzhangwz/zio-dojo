@@ -2,14 +2,13 @@ package com.zhpooer.zio.dojo.configuration
 
 import cats.implicits._
 import ciris._
-import zio.Task
-import zio.ZLayer
+import zio.{Has, Task, ZLayer}
 import zio.interop.catz._
 
 object Configuration {
 
   val live: ZLayer[Any, Throwable, Configuration] =
-    ZLayer.fromEffect(new ConfigLoader(sys.env).load)
+    new ConfigLoader(sys.env).load.map(c => Has(c.db) ++ Has(c.api)).toLayerMany
 }
 
 class ConfigLoader(envMap: Map[String, String]) {

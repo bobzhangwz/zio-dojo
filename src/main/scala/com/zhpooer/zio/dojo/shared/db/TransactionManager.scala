@@ -2,8 +2,8 @@ package com.zhpooer.zio.dojo.shared.db
 
 import cats.effect.{Blocker, Resource}
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import com.zhpooer.zio.dojo.BaseDeps
 import com.zhpooer.zio.dojo.configuration.DBConfig
-import com.zhpooer.zio.dojo.{BaseDeps, configuration}
 import doobie.free.connection
 import doobie.implicits._
 import doobie.util.transactor.Strategy
@@ -30,7 +30,7 @@ object TransactionManager {
   val live: ZLayer[BaseDeps, Throwable, TransactionManager] =
     ZLayer.fromManaged(
       for {
-        dbConfig       <- configuration.getDBConfig.toManaged_
+        dbConfig       <- ZIO.service[DBConfig].toManaged_
         dataSource     <- mkDataSource(dbConfig)
         baseDependency <- ZIO.environment[BaseDeps].toManaged_
       } yield new TransactionManagerLive(baseDependency, dataSource)

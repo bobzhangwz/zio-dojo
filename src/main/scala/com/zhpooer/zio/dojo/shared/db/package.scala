@@ -9,7 +9,7 @@ package object db {
   type TransactionManager = Has[TransactionManager.Service]
   def exec[A](connIO: => ConnectionIO[A]): RIO[HasConnection, A] =
     for {
-      conn   <- RIO.access[HasConnection](_.get)
+      conn   <- RIO.service[Transactor[Task]]
       result <- conn.trans(implicitly)(connIO)
     } yield result
 }
