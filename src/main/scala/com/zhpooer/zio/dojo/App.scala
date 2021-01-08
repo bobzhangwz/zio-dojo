@@ -2,6 +2,7 @@ package com.zhpooer.zio.dojo
 
 import cats.implicits._
 import com.zhpooer.zio.dojo.configuration.ApiConfig
+import com.zhpooer.zio.dojo.domain.todo.{TodoApi, TodoController}
 import com.zhpooer.zio.dojo.live.allLayer
 import com.zhpooer.zio.dojo.service.{HelloService, HelloTapirService}
 import com.zhpooer.zio.dojo.shared.middleware.TracingMiddleware
@@ -25,7 +26,8 @@ object Main extends zio.App {
       apiConfig                             <- ZIO.service[ApiConfig]
       routes: HttpRoutes[RIO[AppEnv, *]] =
         new HelloService[AppEnv].service <+>
-          new SwaggerHttp4s(tapirService.yaml, "swagger").routes[RIO[AppEnv, *]] <+>
+          new TodoController[AppEnv].getAll <+>
+          new SwaggerHttp4s(TodoApi.spec, "swagger").routes[RIO[AppEnv, *]] <+>
           tapirService.service
       _                                     <- runHttp(routes.orNotFound, apiConfig.port)
     } yield ()
